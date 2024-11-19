@@ -19,7 +19,6 @@ const spl_token_2 = require("@solana/spl-token");
 const spl_token_metadata_1 = require("@solana/spl-token-metadata");
 // Define the extensions to be used by the mint
 const extensions = [
-    spl_token_1.ExtensionType.TransferFeeConfig,
     spl_token_1.ExtensionType.MetadataPointer,
 ];
 // Calculate the length of the mint
@@ -41,24 +40,12 @@ function main() {
         yield promises_1.default.writeFile(mintFile, JSON.stringify(Array.from(mintKeypair.secretKey)));
         const mint = mintKeypair.publicKey;
         console.log("Mint public key: ", mint.toBase58());
-        //NOT IN USE - FUNCTIONALITY MAINTAINED FOR FUTURE TOKENS
-        //const transferFeeConfigAuthority = Keypair.generate();
-        const transferFeeConfigAuthority = web3_js_1.Keypair.generate();
-        //const withdrawWithheldAuthority = Keypair.generate();
-        const withdrawWithheldAuthority = web3_js_1.Keypair.generate();
         const decimals = 6;
-        /*
-        //FEES REMOVED
-        const feeBasisPoints = 50;
-        const maxFee = BigInt(5_000);
-        */
-        const feeBasisPoints = 0;
-        const maxFee = BigInt(0);
         const metadata = {
             mint: mint,
-            name: "token-name",
-            symbol: "TOK",
-            uri: "https://gateway.pinata.cloud/ipfs/CID#Example",
+            name: "we are liiiive2",
+            symbol: "WAL2",
+            uri: "https://gateway.pinata.cloud/ipfs/QmYdVJRgioW5ytWqVXHd48Taot4DCeucor4Eb7ecGF6P75",
             additionalMetadata: [["description", "Only Possible On Solana"]],
         };
         const mintLen = (0, spl_token_1.getMintLen)(extensions);
@@ -70,7 +57,9 @@ function main() {
             space: mintLen,
             lamports: mintLamports,
             programId: spl_token_1.TOKEN_2022_PROGRAM_ID,
-        }), (0, spl_token_2.createInitializeTransferFeeConfigInstruction)(mint, transferFeeConfigAuthority.publicKey, withdrawWithheldAuthority.publicKey, feeBasisPoints, maxFee, spl_token_1.TOKEN_2022_PROGRAM_ID), (0, spl_token_1.createInitializeMetadataPointerInstruction)(mint, payer.publicKey, mint, spl_token_1.TOKEN_2022_PROGRAM_ID), (0, spl_token_1.createInitializeMintInstruction)(mint, decimals, payer.publicKey, null, spl_token_1.TOKEN_2022_PROGRAM_ID), (0, spl_token_metadata_1.createInitializeInstruction)({
+        }), (0, spl_token_1.createInitializeMetadataPointerInstruction)(mint, payer.publicKey, mint, spl_token_1.TOKEN_2022_PROGRAM_ID), (0, spl_token_1.createInitializeMintInstruction)(mint, decimals, payer.publicKey, // Set mintAuthority to payer's public key
+        null, // No freezeAuthority
+        spl_token_1.TOKEN_2022_PROGRAM_ID), (0, spl_token_metadata_1.createInitializeInstruction)({
             programId: spl_token_1.TOKEN_2022_PROGRAM_ID,
             mint: mint,
             metadata: metadata.mint,
@@ -88,6 +77,13 @@ function main() {
         console.log("Source account: ", sourceAccount.toBase58());
         //Mint the token to the payers account
         yield (0, spl_token_1.mintTo)(connection, payer, mint, sourceAccount, payer.publicKey, mintAmount, [], undefined, spl_token_1.TOKEN_2022_PROGRAM_ID);
+        //Now nullify authorities by setting them to null
+        yield (0, spl_token_1.setAuthority)(connection, payer, mint, payer.publicKey, // Current authority must sign off
+        spl_token_1.AuthorityType.MintTokens, null, // Set mintAuthority to null
+        [], // Signing accounts
+        undefined, // Confirm options
+        spl_token_1.TOKEN_2022_PROGRAM_ID);
+        console.log("Mint authority and update authority set to null.");
         //Reciever of the token
         const account = web3_js_1.Keypair.generate();
         const accountFile = generateUniqueFilename('keys/account-vProd');
@@ -95,10 +91,8 @@ function main() {
         const destinationAccount = yield (0, spl_token_1.createAccount)(connection, payer, mint, payer.publicKey, account, undefined, spl_token_1.TOKEN_2022_PROGRAM_ID);
         console.log('Destination account: ', destinationAccount.toBase58());
         const transferAmount = BigInt(1000000000);
-        const fee = (transferAmount * BigInt(feeBasisPoints)) / BigInt(10000);
-        console.log('Fee: ', fee);
         //Transfer the token with the fee
-        yield (0, spl_token_2.transferCheckedWithFee)(connection, payer, sourceAccount, mint, destinationAccount, payer, transferAmount, decimals, fee, [], undefined, spl_token_1.TOKEN_2022_PROGRAM_ID);
+        yield (0, spl_token_2.transferChecked)(connection, payer, sourceAccount, mint, destinationAccount, payer, transferAmount, decimals, [], undefined, spl_token_1.TOKEN_2022_PROGRAM_ID);
         console.log("Token transferred");
     });
 }
